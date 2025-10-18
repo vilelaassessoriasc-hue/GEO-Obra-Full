@@ -1,0 +1,25 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: geoobra
+      POSTGRES_USER: geoobra
+      POSTGRES_PASSWORD: geoobra
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  api:
+    build: ./geoobra_backend_v3
+    environment:
+      DATABASE_URL: postgresql+psycopg2://geoobra:geoobra@db:5432/geoobra
+      JWT_SECRET: change_me_in_prod
+      LOG_LEVEL: INFO
+      CORS_ALLOW_ORIGINS: http://localhost:19006,http://127.0.0.1:19006,*
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+volumes:
+  dbdata:
