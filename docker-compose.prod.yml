@@ -11,7 +11,7 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U geoobra -d geoobra"]
       interval: 5s
-      timeout: 3s
+      timeout: 5s
       retries: 20
 
   api:

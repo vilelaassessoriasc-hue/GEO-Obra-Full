@@ -14,6 +14,7 @@ uvicorn app.main:app --reload
 
 ## Testes
 ```bash
+cd geoobra_backend_v3
 pytest -q
 ```
 
@@ -32,4 +33,4 @@ docker compose -f docker-compose.prod.yml up --build
 - `POST /jobs` | `GET /jobs`
 - `GET /jobs/{job_id}/matches`
 
-**Importante:** configure `DATABASE_URL` do Supabase (pooler + `sslmode=require`) e `JWT_SECRET` em produção.
+**Importante:** configure `DATABASE_URL` (Supabase/SaaS com pooler e `sslmode=require`) e `JWT_SECRET` em produção.
