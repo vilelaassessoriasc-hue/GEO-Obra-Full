@@ -11,3 +11,5 @@ alembic==1.13.2
 psycopg2-binary==2.9.9
 
 geoalchemy2>=0.14.6
+
+geoalchemy2>=0.14.6
