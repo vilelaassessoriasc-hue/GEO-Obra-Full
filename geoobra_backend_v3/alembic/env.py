@@ -1,3 +1,9 @@
+# >>> FORÇAR Alembic a usar DATABASE_URL se existir (produção/Supabase)
+import os
+db_url = os.getenv("DATABASE_URL")
+if db_url:
+    config.set_main_option("sqlalchemy.url", db_url)
+# <<< FIM DO BLOCO
 from logging.config import fileConfig
 from alembic import context
 import os, sys
