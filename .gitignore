@@ -18,9 +18,11 @@ htmlcov/
 dev.db
 .env
 .env.*
+!.env.example
 .venv/
 venv/
 .vscode/
 .idea/
 *.log
 docker-cache/
+

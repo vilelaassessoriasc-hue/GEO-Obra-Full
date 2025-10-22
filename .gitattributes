@@ -1,0 +1,18 @@
+* text=auto
+
+# Código Python / YAML / Docker / Shell -> LF
+*.py     text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+Dockerfile text eol=lf
+*.sh     text eol=lf
+*.mako   text eol=lf
+
+# PowerShell / Batch no Windows -> CRLF
+*.ps1    text eol=crlf
+*.cmd    text eol=crlf
+*.bat    text eol=crlf
+
+# CSV/JSON de código (não os da pasta results/) -> LF
+*.csv    text eol=lf
+*.json   text eol=lf
