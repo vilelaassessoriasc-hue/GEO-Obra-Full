@@ -1,0 +1,104 @@
+name: Docker Publish
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_REPO: ${{ github.repository }} # ex: vilelaassessoriasc-hue/GEO-Obra-Full
+
+jobs:
+  build-test-push:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: geoobra
+          POSTGRES_PASSWORD: geoobra
+          POSTGRES_DB: geoobra_db
+        options: >-
+          --health-cmd="pg_isready -U geoobra -d geoobra_db"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql+psycopg2://geoobra:geoobra@postgres:5432/geoobra_db
+      PYTHONPATH: ${{ github.workspace }}
+      PGPASSWORD: geoobra
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          if [ -f geoobra_backend_v3/requirements.txt ]; then pip install -r geoobra_backend_v3/requirements.txt; fi
+
+      - name: Enable PostGIS
+        run: |
+          until pg_isready -h postgres -p 5432 -U geoobra -d geoobra_db; do sleep 2; done
+          psql -h postgres -U geoobra -d geoobra_db -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+
+      - name: Create DB schema
+        run: |
+          python - <<'PY'
+          import os
+          os.environ['DATABASE_URL'] = os.getenv('DATABASE_URL', '')
+          try:
+              from geoobra_backend_v3.app.db import Base, engine  # type: ignore
+          except Exception:
+              from geoobra_backend_v3.app.db.session import engine  # type: ignore
+              from geoobra_backend_v3.app.db.base import Base       # type: ignore
+          Base.metadata.create_all(bind=engine)
+          print("Schema ok")
+          PY
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Compute image name (lowercase)
+        id: names
+        shell: bash
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          # usar -api no sufixo pra diferenciar
+          IMAGE="ghcr.io/${OWNER}/geo-obra-full-api"
+          echo "image=${IMAGE}" >> $GITHUB_OUTPUT
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: |
+            ${{ steps.names.outputs.image }}:latest
+            ${{ steps.names.outputs.image }}:${{ github.sha }}
+          build-args: |
+            APP_VERSION=${{ github.sha }}
