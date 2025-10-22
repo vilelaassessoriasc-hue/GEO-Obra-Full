@@ -1,0 +1,50 @@
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+import os
+
+try:
+    from pydantic_settings import BaseSettings, SettingsConfigDict  # type: ignore
+    USING_PYDANTIC_SETTINGS = True
+except Exception:
+    USING_PYDANTIC_SETTINGS = False
+    class BaseSettings:
+        def __init__(self, **kwargs):
+            env_file = kwargs.get("env_file", ".env")
+            try:
+                if os.path.exists(env_file):
+                    with open(env_file, "r", encoding="utf-8") as f:
+                        for line in f:
+                            s = line.strip()
+                            if not s or s.startswith("#") or "=" not in s:
+                                continue
+                            k, v = s.split("=", 1)
+                            if k and (k not in os.environ):
+                                os.environ[k.strip()] = v.strip()
+            except Exception:
+                pass
+    class SettingsConfigDict(dict): pass
+
+class Settings(BaseSettings):
+    if USING_PYDANTIC_SETTINGS:
+        model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", ""sqlite:///./dev.db"")
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "change-me-in-prod")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
+    CORS_ALLOW_ORIGINS: str = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,*")
+
+settings = Settings()
+connect_args = {"check_same_thread": False} if str(settings.DATABASE_URL).startswith("sqlite") else {}
+engine = create_engine(settings.DATABASE_URL, echo=False, future=True, connect_args=connect_args)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+
+class Base(DeclarativeBase):
+    pass
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
