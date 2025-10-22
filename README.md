@@ -40,3 +40,18 @@ docker compose -f docker-compose.prod.yml up --build
 **Importante:** configure `DATABASE_URL` (Supabase/SaaS com pooler e `sslmode=require`) e `JWT_SECRET` em produção.
 
 
+
+
+## Ambiente sem Docker (ex.: Codex)
+
+Se o ambiente *não* possui Docker instalado, use o fluxo mínimo de verificação:
+
+bash
+make test-nodocker
+
+
+Esse alvo cria um ambiente virtual, instala dependências básicas e executa um smoke test inline
+(geoobra_backend_v3/tests/test_health_inline.py) que valida o app FastAPI sem depender de Postgres/PostGIS.
+
+> Build e publicação de imagens Docker ficam no *GitHub Actions* (badges no topo do README).
+> Para deploy local com containers, utilize deploy_local.ps1 em uma máquina com Docker.

@@ -12,7 +12,7 @@ services:
 
   api:
     # permite sobrepor com: IMAGE=ghcr.io/<owner>/geo-obra-full-api:<tag> docker compose -f docker-compose.deploy.yml up -d
-    image: ${IMAGE:-ghcr.io/vilelaassessoriasc-hue/geo-obra-full-api:latest}
+    image: ${IMAGE:-geoobra-api-local:latest}
     container_name: geoobra_api
     depends_on:
       - db
@@ -24,3 +24,4 @@ services:
 
 volumes:
   dbdata:
+
