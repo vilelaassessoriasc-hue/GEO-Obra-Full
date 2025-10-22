@@ -2,47 +2,77 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master, main, "feature/" ]
   pull_request:
-    branches: [ main ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Set up Python
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: geoobra
+          POSTGRES_PASSWORD: geoobra
+          POSTGRES_DB: geoobra_db
+        # healthcheck garante que o serviço está pronto antes dos passos
+        options: >-
+          --health-cmd="pg_isready -U geoobra -d geoobra_db"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      # App usa psycopg2 via SQLAlchemy
+      DATABASE_URL: postgresql+psycopg2://geoobra:geoobra@postgres:5432/geoobra_db
+      PYTHONPATH: ${{ github.workspace }}
+      PGPASSWORD: geoobra
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install geoalchemy2 || true
+          if [ -f geoobra_backend_v3/requirements.txt ]; then pip install -r geoobra_backend_v3/requirements.txt; fi
 
-      - name: Lint & Tests
+      - name: Enable PostGIS
         run: |
-          pytest -q || true
+          until pg_isready -h postgres -p 5432 -U geoobra -d geoobra_db; do sleep 2; done
+          psql -h postgres -U geoobra -d geoobra_db -c "CREATE EXTENSION IF NOT EXISTS postgis;"
 
-      - name: Export OpenAPI
+      - name: Create DB schema (SQLAlchemy fallback)
         run: |
-          python scripts/export_openapi.py || true
+          python - <<'PY'
+          import os
+          os.environ['DATABASE_URL'] = os.getenv('DATABASE_URL', '')
+          try:
+              # caminho 1 (db.py centraliza Base/engine)
+              from geoobra_backend_v3.app.db import Base, engine  # type: ignore
+          except Exception:
+              # caminho 2 (estrutura session/base separadas)
+              from geoobra_backend_v3.app.db.session import engine  # type: ignore
+              from geoobra_backend_v3.app.db.base import Base       # type: ignore
+          Base.metadata.create_all(bind=engine)
+          print("Schema criado via SQLAlchemy Base.metadata.create_all()")
+          PY
 
-      - name: Upload OpenAPI artifact
+      - name: Run tests (pytest)
+        run: |
+          pytest -q
+
+      - name: Upload pytest cache on failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: openapi_export
-          path: openapi_export/
+          name: pytest-cache
+          path: .pytest_cache

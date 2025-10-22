@@ -1,3 +1,5 @@
+[![CI](https://github.com/vilelaassessoriasc-hue/GEO-Obra-Full/actions/workflows/ci.yml/badge.svg)](https://github.com/vilelaassessoriasc-hue/GEO-Obra-Full/actions/workflows/ci.yml)
+
 
 # Geo Obra — Backend MVP (FastAPI + SQLAlchemy + Alembic)
 
@@ -34,3 +36,4 @@ docker compose -f docker-compose.prod.yml up --build
 - `GET /jobs/{job_id}/matches`
 
 **Importante:** configure `DATABASE_URL` (Supabase/SaaS com pooler e `sslmode=require`) e `JWT_SECRET` em produção.
+
