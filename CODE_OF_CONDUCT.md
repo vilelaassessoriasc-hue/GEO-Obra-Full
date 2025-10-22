@@ -1,0 +1,1 @@
+Seja respeitoso e colaborativo.

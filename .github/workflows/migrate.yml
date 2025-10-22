@@ -1,0 +1,31 @@
+name: Migrations (Manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install geoalchemy2
+
+      - name: Run Alembic upgrade
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          python - << 'PY'
+import os, subprocess
+print("Using DATABASE_URL:", "present" if os.getenv("DATABASE_URL") else "missing")
+subprocess.check_call(["alembic", "upgrade", "head"])
+PY

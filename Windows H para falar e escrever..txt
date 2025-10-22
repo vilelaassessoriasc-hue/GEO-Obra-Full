@@ -1,0 +1,41 @@
+Windows H para falar e escrever.
+Windows + K transmiti tela 
+
+Você é um engenheiro sênior faça o seguinte 
+
+Priorizar a recuperação ou implementação do backend FastAPI, garantindo que o repositório contenha o código mínimo funcional antes de qualquer outra atividade. 
+
+Harmonizar configurações de ambiente e automatizar migrações para evitar divergências entre desenvolvimento e produção. 
+
+Elaborar documentação abrangente e instruções de operação para facilitar onboarding e manutenção. 
+
+Montar pipeline de testes e qualidade coerente com as dependências listadas, garantindo rastreabilidade e confiabilidade. 
+
+Próximos Passos Recomendados
+Versionar o código da API e alinhar estrutura
+Inclua o diretório (por exemplo, app/) com módulos FastAPI, camada de dados e testes unitários para que o Dockerfile e o uvicorn consigam iniciar a aplicação.
+
+Ajustar manifestos de deploy
+Corrija o docker-compose.prod.yml para apontar para o caminho real do backend e harmonize as variáveis (por exemplo, Postgres vs. SQLite), garantindo que o ambiente local replique produção.
+
+Configurar migrations
+Adicione o diretório alembic/ com env.py e scripts de versão, e defina uma estratégia de múltiplos ambientes (SQLite para dev, Postgres para prod) via variáveis de ambiente, evitando discrepâncias de esquema.
+
+Documentar instalação e execução
+Expanda o README.md com requisitos, comandos para subir o ambiente (docker e local), variáveis necessárias e fluxo de desenvolvimento, incluindo cobertura de testes e guidelines de contribuição.
+
+Revisar governança de segurança e secrets
+Defina instruções claras para gerar JWT_SECRET seguro e restringir CORS em produção, documentando políticas de rotação de credenciais e como armazená-las fora do repositório.
+
+Planejar automação de CI/CD
+Assim que o código estiver versionado, configure pipeline (lint, testes, build) usando GitHub Actions ou similar, instalando dependências de require
+ments.txt para validar cada PR automaticamente.
+
+Próximos passos gerais
+Recuperar ou reconstruir o backend completo e alinhar a infraestrutura Docker.
+
+Unificar as configurações de banco em todos os ambientes.
+
+Documentar o setup e fluxos de trabalho para novos colaboradores.
+
+Restaurar as migrações e preparar scripts de banco.

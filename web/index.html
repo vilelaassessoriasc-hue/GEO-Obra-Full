@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <title>GEO-Obra — Matches Geo (Job 4)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
+    header { display:flex; gap:10px; align-items:center; margin-bottom:16px;}
+    input[type=number]{ width:100px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 6px 8px; }
+    th { background:#f4f4f4; text-align: left; }
+    .muted{color:#666; font-size:12px}
+  </style>
+</head>
+<body>
+  <header>
+    <h2 style="margin:0;">Matches do Job 4</h2>
+    <div class="muted" id="meta"></div>
+  </header>
+
+  <div style="margin: 12px 0;">
+    <label>Distância ≤ <input id="maxd" type="number" step="0.001" min="0" value="0.08"> km</label>
+    <label style="margin-left:12px;">Score ≥ <input id="mins" type="number" step="0.001" min="0" max="1" value="0.99"></label>
+    <button id="apply">Aplicar</button>
+  </div>
+
+  <table id="tbl">
+    <thead>
+      <tr><th>#</th><th>ID</th><th>Email</th><th>Lat</th><th>Lng</th><th>Dist (km)</th><th>Score</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const SRC_JSON = "../results/matches_geo_job4_20251021-193649_filtered.json";
+    let raw = null;
+
+    async function load() {
+      const r = await fetch(SRC_JSON, {cache:"no-cache"});
+      raw = await r.json();
+      document.getElementById('meta').textContent =
+        \adius=\km | count=\ | total=\\;
+      render(raw.results);
+    }
+
+    function render(rows) {
+      const tb = document.querySelector('#tbl tbody');
+      tb.innerHTML = "";
+      rows.forEach((x,i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = \
+          <td>\</td>
+          <td>\</td>
+          <td>\</td>
+          <td>\</td>
+          <td>\</td>
+          <td>\</td>
+          <td>\</td>\;
+        tb.appendChild(tr);
+      });
+    }
+
+    function applyFilters() {
+      const maxd = parseFloat(document.getElementById('maxd').value);
+      const mins = parseFloat(document.getElementById('mins').value);
+      const filtered = raw.results.filter(r =>
+        (isFinite(maxd) ? r.distance_km <= maxd : true) &&
+        (isFinite(mins) ? r.score >= mins : true)
+      ).sort((a,b) => (b.score - a.score) || (a.distance_km - b.distance_km));
+      render(filtered);
+    }
+
+    document.getElementById('apply').addEventListener('click', applyFilters);
+    load();
+  </script>
+</body>
+</html>
