@@ -55,3 +55,10 @@ Esse alvo cria um ambiente virtual, instala dependências básicas e executa um 
 
 > Build e publicação de imagens Docker ficam no *GitHub Actions* (badges no topo do README).
 > Para deploy local com containers, utilize deploy_local.ps1 em uma máquina com Docker.
+
+
+### Windows (PowerShell, sem Docker)
+
+powershell
+.\\scripts\\codex_nodocker.ps1
+
