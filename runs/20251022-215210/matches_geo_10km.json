@@ -1,0 +1,19 @@
+{
+  "job_id": 2,
+  "radius_km": 10.0,
+  "count": 1,
+  "total_count": 1,
+  "page": null,
+  "page_size": null,
+  "results": [
+    {
+      "id": 2,
+      "email": "test@example.com",
+      "lat": -23.55052,
+      "lng": -46.63331,
+      "role": "worker",
+      "distance_km": 0.0,
+      "score": 1.0
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+task_id,title,status,distance_km,created_at
+1,Demolição inicial,pending,0.05,2025-10-23 02:15:36.014778
+3,Acabamento,pending,0.08,2025-10-23 02:15:36.014778
+2,Alvenaria,pending,0.10,2025-10-23 02:15:36.014778
+4,Vistoria elétrica,in_progress,0.12,2025-10-23 03:44:33.041896

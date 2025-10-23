@@ -1,0 +1,384 @@
+api-1  | Traceback (most recent call last):
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+api-1  |     self._dbapi_connection = engine.raw_connection()
+api-1  |                              ^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3302, in raw_connection
+api-1  |     return self.pool.connect()
+api-1  |            ^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 449, in connect
+api-1  |     return _ConnectionFairy._checkout(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1263, in _checkout
+api-1  |     fairy = _ConnectionRecord.checkout(pool)
+api-1  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+api-1  |     rec = pool._do_get()
+api-1  |           ^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 308, in _do_get
+api-1  |     return self._create_connection()
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 390, in _create_connection
+api-1  |     return _ConnectionRecord(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+api-1  |     self.__connect()
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+api-1  |     with util.safe_reraise():
+api-1  |          ^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+api-1  |     raise exc_value.with_traceback(exc_tb)
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+api-1  |     self.dbapi_connection = connection = pool._invoke_creator(self)
+api-1  |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 643, in connect
+api-1  |     return dialect.connect(*cargs, **cparams)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 621, in connect
+api-1  |     return self.loaded_dbapi.connect(*cargs, **cparams)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/psycopg/connection.py", line 119, in connect
+api-1  |     raise last_ex.with_traceback(None)
+api-1  | psycopg.OperationalError: connection failed: connection to server at "172.19.0.2", port 5432 failed: Connection refused
+api-1  | 	Is the server running on that host and accepting TCP/IP connections?
+api-1  | 
+api-1  | The above exception was the direct cause of the following exception:
+api-1  | 
+api-1  | Traceback (most recent call last):
+api-1  |   File "/usr/local/bin/alembic", line 7, in <module>
+api-1  |     sys.exit(main())
+api-1  |              ^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 636, in main
+api-1  |     CommandLine(prog=prog).main(argv=argv)
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 626, in main
+api-1  |     self.run_cmd(cfg, options)
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 603, in run_cmd
+api-1  |     fn(
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/command.py", line 406, in upgrade
+api-1  |     script.run_env()
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/script/base.py", line 582, in run_env
+api-1  |     util.load_python_file(self.dir, "env.py")
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 95, in load_python_file
+api-1  |     module = load_module_py(module_id, path)
+api-1  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 113, in load_module_py
+api-1  |     spec.loader.exec_module(module)  # type: ignore
+api-1  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+api-1  |   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+api-1  |   File "/app/geoobra_backend_v3/alembic/env.py", line 48, in <module>
+api-1  |     run_migrations_online()
+api-1  |   File "/app/geoobra_backend_v3/alembic/env.py", line 35, in run_migrations_online
+api-1  |     with connectable.connect() as connection:
+api-1  |          ^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3278, in connect
+api-1  |     return self._connection_cls(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 148, in __init__
+api-1  |     Connection._handle_dbapi_exception_noconnection(
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2442, in _handle_dbapi_exception_noconnection
+api-1  |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+api-1  |     self._dbapi_connection = engine.raw_connection()
+api-1  |                              ^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3302, in raw_connection
+api-1  |     return self.pool.connect()
+api-1  |            ^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 449, in connect
+api-1  |     return _ConnectionFairy._checkout(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1263, in _checkout
+api-1  |     fairy = _ConnectionRecord.checkout(pool)
+api-1  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+api-1  |     rec = pool._do_get()
+api-1  |           ^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 308, in _do_get
+api-1  |     return self._create_connection()
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 390, in _create_connection
+api-1  |     return _ConnectionRecord(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+api-1  |     self.__connect()
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+api-1  |     with util.safe_reraise():
+api-1  |          ^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+api-1  |     raise exc_value.with_traceback(exc_tb)
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+api-1  |     self.dbapi_connection = connection = pool._invoke_creator(self)
+api-1  |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 643, in connect
+api-1  |     return dialect.connect(*cargs, **cparams)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 621, in connect
+api-1  |     return self.loaded_dbapi.connect(*cargs, **cparams)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/psycopg/connection.py", line 119, in connect
+api-1  |     raise last_ex.with_traceback(None)
+api-1  | sqlalchemy.exc.OperationalError: (psycopg.OperationalError) connection failed: connection to server at "172.19.0.2", port 5432 failed: Connection refused
+api-1  | 	Is the server running on that host and accepting TCP/IP connections?
+api-1  | (Background on this error at: https://sqlalche.me/e/20/e3q8)
+api-1  | Traceback (most recent call last):
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+api-1  |     self._dbapi_connection = engine.raw_connection()
+api-1  |                              ^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3302, in raw_connection
+api-1  |     return self.pool.connect()
+api-1  |            ^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 449, in connect
+api-1  |     return _ConnectionFairy._checkout(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1263, in _checkout
+api-1  |     fairy = _ConnectionRecord.checkout(pool)
+api-1  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+api-1  |     rec = pool._do_get()
+api-1  |           ^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 308, in _do_get
+api-1  |     return self._create_connection()
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 390, in _create_connection
+api-1  |     return _ConnectionRecord(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+api-1  |     self.__connect()
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+api-1  |     with util.safe_reraise():
+api-1  |          ^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+api-1  |     raise exc_value.with_traceback(exc_tb)
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+api-1  |     self.dbapi_connection = connection = pool._invoke_creator(self)
+api-1  |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 643, in connect
+api-1  |     return dialect.connect(*cargs, **cparams)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 621, in connect
+api-1  |     return self.loaded_dbapi.connect(*cargs, **cparams)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/psycopg/connection.py", line 119, in connect
+api-1  |     raise last_ex.with_traceback(None)
+api-1  | psycopg.OperationalError: connection failed: connection to server at "172.19.0.2", port 5432 failed: Connection refused
+api-1  | 	Is the server running on that host and accepting TCP/IP connections?
+api-1  | 
+api-1  | The above exception was the direct cause of the following exception:
+api-1  | 
+api-1  | Traceback (most recent call last):
+api-1  |   File "/usr/local/bin/alembic", line 7, in <module>
+api-1  |     sys.exit(main())
+api-1  |              ^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 636, in main
+api-1  |     CommandLine(prog=prog).main(argv=argv)
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 626, in main
+api-1  |     self.run_cmd(cfg, options)
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 603, in run_cmd
+api-1  |     fn(
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/command.py", line 406, in upgrade
+api-1  |     script.run_env()
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/script/base.py", line 582, in run_env
+api-1  |     util.load_python_file(self.dir, "env.py")
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 95, in load_python_file
+api-1  |     module = load_module_py(module_id, path)
+api-1  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 113, in load_module_py
+api-1  |     spec.loader.exec_module(module)  # type: ignore
+api-1  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+api-1  |   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+api-1  |   File "/app/geoobra_backend_v3/alembic/env.py", line 48, in <module>
+api-1  |     run_migrations_online()
+api-1  |   File "/app/geoobra_backend_v3/alembic/env.py", line 35, in run_migrations_online
+api-1  |     with connectable.connect() as connection:
+api-1  |          ^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3278, in connect
+api-1  |     return self._connection_cls(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 148, in __init__
+api-1  |     Connection._handle_dbapi_exception_noconnection(
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2442, in _handle_dbapi_exception_noconnection
+api-1  |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+api-1  |     self._dbapi_connection = engine.raw_connection()
+api-1  |                              ^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3302, in raw_connection
+api-1  |     return self.pool.connect()
+api-1  |            ^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 449, in connect
+api-1  |     return _ConnectionFairy._checkout(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1263, in _checkout
+api-1  |     fairy = _ConnectionRecord.checkout(pool)
+api-1  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+api-1  |     rec = pool._do_get()
+api-1  |           ^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 308, in _do_get
+api-1  |     return self._create_connection()
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 390, in _create_connection
+api-1  |     return _ConnectionRecord(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+api-1  |     self.__connect()
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+api-1  |     with util.safe_reraise():
+api-1  |          ^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+api-1  |     raise exc_value.with_traceback(exc_tb)
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+api-1  |     self.dbapi_connection = connection = pool._invoke_creator(self)
+api-1  |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 643, in connect
+api-1  |     return dialect.connect(*cargs, **cparams)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 621, in connect
+api-1  |     return self.loaded_dbapi.connect(*cargs, **cparams)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/psycopg/connection.py", line 119, in connect
+api-1  |     raise last_ex.with_traceback(None)
+api-1  | sqlalchemy.exc.OperationalError: (psycopg.OperationalError) connection failed: connection to server at "172.19.0.2", port 5432 failed: Connection refused
+api-1  | 	Is the server running on that host and accepting TCP/IP connections?
+api-1  | (Background on this error at: https://sqlalche.me/e/20/e3q8)
+api-1  | Traceback (most recent call last):
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+api-1  |     self._dbapi_connection = engine.raw_connection()
+api-1  |                              ^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3302, in raw_connection
+api-1  |     return self.pool.connect()
+api-1  |            ^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 449, in connect
+api-1  |     return _ConnectionFairy._checkout(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1263, in _checkout
+api-1  |     fairy = _ConnectionRecord.checkout(pool)
+api-1  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+api-1  |     rec = pool._do_get()
+api-1  |           ^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 308, in _do_get
+api-1  |     return self._create_connection()
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 390, in _create_connection
+api-1  |     return _ConnectionRecord(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+api-1  |     self.__connect()
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+api-1  |     with util.safe_reraise():
+api-1  |          ^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+api-1  |     raise exc_value.with_traceback(exc_tb)
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+api-1  |     self.dbapi_connection = connection = pool._invoke_creator(self)
+api-1  |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 643, in connect
+api-1  |     return dialect.connect(*cargs, **cparams)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 621, in connect
+api-1  |     return self.loaded_dbapi.connect(*cargs, **cparams)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/psycopg/connection.py", line 119, in connect
+api-1  |     raise last_ex.with_traceback(None)
+api-1  | psycopg.OperationalError: connection failed: connection to server at "172.19.0.2", port 5432 failed: Connection refused
+api-1  | 	Is the server running on that host and accepting TCP/IP connections?
+api-1  | 
+api-1  | The above exception was the direct cause of the following exception:
+api-1  | 
+api-1  | Traceback (most recent call last):
+api-1  |   File "/usr/local/bin/alembic", line 7, in <module>
+api-1  |     sys.exit(main())
+api-1  |              ^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 636, in main
+api-1  |     CommandLine(prog=prog).main(argv=argv)
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 626, in main
+api-1  |     self.run_cmd(cfg, options)
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 603, in run_cmd
+api-1  |     fn(
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/command.py", line 406, in upgrade
+api-1  |     script.run_env()
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/script/base.py", line 582, in run_env
+api-1  |     util.load_python_file(self.dir, "env.py")
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 95, in load_python_file
+api-1  |     module = load_module_py(module_id, path)
+api-1  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 113, in load_module_py
+api-1  |     spec.loader.exec_module(module)  # type: ignore
+api-1  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+api-1  |   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+api-1  |   File "/app/geoobra_backend_v3/alembic/env.py", line 48, in <module>
+api-1  |     run_migrations_online()
+api-1  |   File "/app/geoobra_backend_v3/alembic/env.py", line 35, in run_migrations_online
+api-1  |     with connectable.connect() as connection:
+api-1  |          ^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3278, in connect
+api-1  |     return self._connection_cls(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 148, in __init__
+api-1  |     Connection._handle_dbapi_exception_noconnection(
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2442, in _handle_dbapi_exception_noconnection
+api-1  |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+api-1  |     self._dbapi_connection = engine.raw_connection()
+api-1  |                              ^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3302, in raw_connection
+api-1  |     return self.pool.connect()
+api-1  |            ^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 449, in connect
+api-1  |     return _ConnectionFairy._checkout(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1263, in _checkout
+api-1  |     fairy = _ConnectionRecord.checkout(pool)
+api-1  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+api-1  |     rec = pool._do_get()
+api-1  |           ^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 308, in _do_get
+api-1  |     return self._create_connection()
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 390, in _create_connection
+api-1  |     return _ConnectionRecord(self)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+api-1  |     self.__connect()
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+api-1  |     with util.safe_reraise():
+api-1  |          ^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+api-1  |     raise exc_value.with_traceback(exc_tb)
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+api-1  |     self.dbapi_connection = connection = pool._invoke_creator(self)
+api-1  |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 643, in connect
+api-1  |     return dialect.connect(*cargs, **cparams)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 621, in connect
+api-1  |     return self.loaded_dbapi.connect(*cargs, **cparams)
+api-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+api-1  |   File "/usr/local/lib/python3.12/site-packages/psycopg/connection.py", line 119, in connect
+api-1  |     raise last_ex.with_traceback(None)
+api-1  | sqlalchemy.exc.OperationalError: (psycopg.OperationalError) connection failed: connection to server at "172.19.0.2", port 5432 failed: Connection refused
+api-1  | 	Is the server running on that host and accepting TCP/IP connections?
+api-1  | (Background on this error at: https://sqlalche.me/e/20/e3q8)
+api-1  | INFO:     Uvicorn running on http://0.0.0.0:8080 (Press CTRL+C to quit)
+api-1  | INFO:     Started parent process [7]
+api-1  | INFO:     Started server process [13]
+api-1  | INFO:     Waiting for application startup.
+api-1  | INFO:     Application startup complete.
+api-1  | INFO:     Started server process [12]
+api-1  | INFO:     Waiting for application startup.
+api-1  | INFO:     Application startup complete.
+api-1  | INFO:     127.0.0.1:59792 - "GET /health HTTP/1.1" 200 OK
+api-1  | INFO:     172.19.0.1:45044 - "POST /auth/register HTTP/1.1" 404 Not Found
+api-1  | INFO:     172.19.0.1:45052 - "POST /auth/login HTTP/1.1" 401 Unauthorized
+api-1  | INFO:     172.19.0.1:45064 - "POST /auth/register HTTP/1.1" 404 Not Found
+api-1  | INFO:     172.19.0.1:45068 - "PUT /users//location HTTP/1.1" 404 Not Found
+api-1  | INFO:     172.19.0.1:45080 - "POST /auth/register HTTP/1.1" 404 Not Found
+api-1  | INFO:     172.19.0.1:45094 - "PUT /users//location HTTP/1.1" 404 Not Found
+api-1  | INFO:     172.19.0.1:45108 - "POST /auth/register HTTP/1.1" 404 Not Found
+api-1  | INFO:     172.19.0.1:45120 - "PUT /users//location HTTP/1.1" 404 Not Found
+api-1  | INFO:     172.19.0.1:45124 - "POST /jobs HTTP/1.1" 422 Unprocessable Entity
+api-1  | INFO:     172.19.0.1:45136 - "GET /jobs//matches_geo?radius_km=10 HTTP/1.1" 404 Not Found
+api-1  | INFO:     172.19.0.1:45142 - "GET /jobs//matches_geo?radius_km=30 HTTP/1.1" 404 Not Found
+api-1  | INFO:     172.19.0.1:45154 - "GET /jobs//matches_geo?radius_km=100 HTTP/1.1" 404 Not Found

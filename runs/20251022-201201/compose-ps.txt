@@ -1,0 +1,3 @@
+NAME                                    IMAGE                                 COMMAND                  SERVICE   CREATED          STATUS                             PORTS
+geo-obra-backup-20251020-161333-api-1   geo-obra-backup-20251020-161333-api   "/usr/bin/tini -- baÔÇª"   api       16 seconds ago   Up 10 seconds (health: starting)   0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
+geo-obra-backup-20251020-161333-db-1    postgis/postgis:16-3.4                "docker-entrypoint.sÔÇª"   db        16 seconds ago   Up 15 seconds                      0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp

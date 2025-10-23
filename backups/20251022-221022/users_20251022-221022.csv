@@ -1,0 +1,5 @@
+id,email,name,role,lat,lng,created_at
+1,admin@example.com,Admin,admin,,,2025-10-22 23:28:34.71545+00
+2,test@example.com,Tester,worker,-23.55052,-46.63331,2025-10-22 23:43:32.947651+00
+3,worker2@example.com,Worker 2,worker,-23.46,-46.53,2025-10-23 00:47:53.002823+00
+4,worker3@example.com,Worker 3,worker,-22.91,-47.06,2025-10-23 00:47:53.391255+00

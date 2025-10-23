@@ -1,0 +1,193 @@
+from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from typing import Optional, Generator, Tuple, List, Dict, Any
+from starlette.responses import Response
+import base64, json
+from datetime import datetime
+
+# get_db oficial; se não existir, fallback
+try:
+    from app.db.session import get_db
+except Exception:
+    from ..db.session import SessionLocal
+    def get_db() -> Generator[Session, None, None]:
+        db = SessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+router = APIRouter(prefix="/jobs", tags=["jobs"])
+
+ALLOWED_STATUS = {"pending", "in_progress", "done"}
+ALLOWED_ORDER  = {"distance", "created_at"}
+ALLOWED_DIR    = {"asc", "desc"}
+
+def _encode_cursor(payload: Dict[str, Any]) -> str:
+    return base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode("utf-8")
+
+def _decode_cursor(token: str) -> Dict[str, Any]:
+    return json.loads(base64.urlsafe_b64decode(token.encode("utf-8")).decode("utf-8"))
+
+def _run_query(
+    db: Session,
+    job_id: int,
+    radius_km: float,
+    status: Optional[str],
+    limit: int,
+    order_by: str,
+    order_dir: str,
+    cursor: Optional[str]
+) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+
+    if order_by not in ALLOWED_ORDER:
+        raise HTTPException(status_code=400, detail=f"order_by inválido: {order_by}")
+    if order_dir not in ALLOWED_DIR:
+        raise HTTPException(status_code=400, detail=f"order_dir inválido: {order_dir}")
+    if status is not None and status not in ALLOWED_STATUS:
+        raise HTTPException(status_code=400, detail=f"status inválido: {status}")
+
+    radius_m = float(radius_km) * 1000.0
+    dir_sql  = "ASC" if order_dir == "asc" else "DESC"
+
+    # Filtro de status vira dois caminhos para evitar ambiguidade de tipos
+    status_filter = "AND t.status = :status" if status else ""
+
+    # Cursor -> filtro incremental
+    cursor_filter = ""
+    params: Dict[str, Any] = {
+        "job_id": job_id,
+        "radius_m": radius_m,
+        "limit": min(max(int(limit), 1), 200)
+    }
+    if status:
+        params["status"] = status
+
+    cur_d = None
+    cur_id = None
+    cur_ts = None
+
+    if cursor:
+        try:
+            token = _decode_cursor(cursor)
+        except Exception:
+            raise HTTPException(status_code=400, detail="cursor inválido (decode)")
+        if token.get("ob") != order_by or token.get("od") != order_dir:
+            raise HTTPException(status_code=400, detail="cursor incompatível com ordenação atual")
+
+        if order_by == "distance":
+            try:
+                cur_d = float(token["d"]); cur_id = int(token["id"])
+            except Exception:
+                raise HTTPException(status_code=400, detail="cursor(distance) inválido")
+            params["cur_d"]  = cur_d
+            params["cur_id"] = cur_id
+            if order_dir == "asc":
+                cursor_filter = "WHERE (distance_km > :cur_d OR (distance_km = :cur_d AND task_id > :cur_id))"
+            else:
+                cursor_filter = "WHERE (distance_km < :cur_d OR (distance_km = :cur_d AND task_id < :cur_id))"
+        else:  # created_at
+            try:
+                cur_ts = token["ts"]; cur_id = int(token["id"])
+            except Exception:
+                raise HTTPException(status_code=400, detail="cursor(created_at) inválido")
+            params["cur_ts"] = cur_ts
+            params["cur_id"] = cur_id
+            if order_dir == "asc":
+                cursor_filter = "WHERE (created_at > :cur_ts::timestamp OR (created_at = :cur_ts::timestamp AND task_id > :cur_id))"
+            else:
+                cursor_filter = "WHERE (created_at < :cur_ts::timestamp OR (created_at = :cur_ts::timestamp AND task_id < :cur_id))"
+
+    # CTE base com distance_km e created_at para possibilitar keyset
+    base_sql = f"""
+    WITH j AS (
+      SELECT geom AS g FROM jobs WHERE id = :job_id
+    ),
+    base AS (
+      SELECT
+        t.id AS task_id,
+        t.title,
+        t.status,
+        ROUND((ST_DistanceSphere(t.geom, j.g) / 1000.0)::numeric, 2) AS distance_km,
+        t.created_at
+      FROM tasks t
+      CROSS JOIN j
+      WHERE t.geom IS NOT NULL
+        AND j.g IS NOT NULL
+        AND ST_DWithin(t.geom::geography, j.g::geography, :radius_m)
+        {status_filter}
+    )
+    SELECT task_id, title, status, distance_km, created_at
+    FROM base
+    {cursor_filter}
+    ORDER BY {"distance_km" if order_by=="distance" else "created_at"} {dir_sql}, task_id {dir_sql}
+    LIMIT :limit
+    """
+
+    rows = db.execute(text(base_sql), params).mappings().all()
+    results = [dict(r) for r in rows]
+
+    # next_cursor
+    next_cur = None
+    if results and len(results) == params["limit"]:
+        last = results[-1]
+        if order_by == "distance":
+            next_cur = _encode_cursor({"ob":"distance","od":order_dir,"d":float(last["distance_km"]), "id": int(last["task_id"])})
+        else:
+            # ISO sem timezone (created_at é timestamp sem timezone na nossa tabela)
+            ts = last["created_at"].isoformat() if isinstance(last["created_at"], datetime) else str(last["created_at"])
+            next_cur = _encode_cursor({"ob":"created_at","od":order_dir,"ts": ts, "id": int(last["task_id"])})
+    return results, next_cur
+
+@router.get("/{job_id}/tasks_nearby")
+def tasks_nearby(
+    job_id: int,
+    radius_km: float = Query(30.0, ge=0.0),
+    status: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    order_by: str = Query("distance"),
+    order_dir: str = Query("asc"),
+    cursor: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    try:
+        rows, nxt = _run_query(db, job_id, radius_km, status, limit, order_by, order_dir, cursor)
+        return {
+            "job_id": job_id,
+            "radius_km": radius_km,
+            "order_by": order_by,
+            "order_dir": order_dir,
+            "filters": {"status": status, "limit": limit, "cursor": cursor},
+            "count": len(rows),
+            "next_cursor": nxt,
+            "results": rows
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"{e._class.name_}: {e}")
+
+@router.get("/{job_id}/tasks_nearby/export")
+def tasks_nearby_export(
+    job_id: int,
+    radius_km: float = Query(30.0, ge=0.0),
+    status: Optional[str] = Query(None),
+    limit: int = Query(1000, ge=1, le=5000),
+    order_by: str = Query("distance"),
+    order_dir: str = Query("asc"),
+    cursor: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    rows, _ = _run_query(db, job_id, radius_km, status, limit, order_by, order_dir, cursor)
+    # CSV simples
+    import io, csv
+    sio = io.StringIO()
+    writer = csv.writer(sio)
+    writer.writerow(["task_id","title","status","distance_km","created_at"])
+    for r in rows:
+        writer.writerow([r["task_id"], r["title"], r["status"], r["distance_km"], r["created_at"]])
+    csv_bytes = sio.getvalue()
+    filename = f"tasks_nearby_job_{job_id}.csv"
+    return Response(content=csv_bytes, media_type="text/csv",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})

@@ -1,0 +1,48 @@
+from starlette.middleware.gzip import GZipMiddleware
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+
+# Routers
+from geoobra_backend_v3.app.api.routes_auth import router as auth_router
+from geoobra_backend_v3.app.api.routes_users import router as users_router
+from geoobra_backend_v3.app.api.routes_jobs import router as jobs_router
+try:
+    from geoobra_backend_v3.app.api.routes_matches_geo import router as matches_geo_router
+except Exception:
+    matches_geo_router = None  # opcional, segue sem o router se der erro
+
+def create_app() -> FastAPI:
+    app = FastAPI(title="GEO-Obra API", version="0.1.0")
+
+    # CORS amplo (ajuste depois conforme necessidade)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # GZip (comprime respostas > 500 bytes)
+    app.add_middleware(GZipMiddleware, minimum_size=500)
+
+    @app.get("/health")
+    def health():
+        return {"status": "ok"}
+
+    # Importante: os routers já têm seus próprios prefixes
+    app.include_router(auth_router, tags=["auth"])
+    app.include_router(users_router, tags=["users"])
+    app.include_router(jobs_router, tags=["jobs"])
+    if matches_geo_router:
+        app.include_router(matches_geo_router, tags=["geo"])
+
+    return app
+
+app = create_app()
+
+# --- auto-registered by setup script ---
+from app.api.routes_tasks_nearby import router as tasks_nearby_router
+app.include_router(tasks_nearby_router)
+# --- end auto-registered ---

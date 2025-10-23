@@ -1,0 +1,242 @@
+from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from typing import Optional, Generator, Tuple, List, Dict, Any
+from starlette.responses import Response
+from datetime import datetime
+
+def _parse_iso(dt: str):
+    # aceita "YYYY-MM-DDTHH:MM:SS(.ffffff)?(±HH:MM)?" e também com espaço
+    if dt is None:
+        return None
+    s = str(dt).replace(" ", "T")
+    try:
+        return datetime.fromisoformat(s)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Data/hora inválida: {dt} (use ISO 8601)")
+import base64, json, os
+
+# get_db oficial; fallback se necessário
+try:
+    from app.db.session import get_db
+except Exception:
+    from ..db.session import SessionLocal
+    def get_db() -> Generator[Session, None, None]:
+        db = SessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+router = APIRouter(prefix="/jobs", tags=["jobs"])
+
+ALLOWED_STATUS = {"pending", "in_progress", "done"}
+ALLOWED_ORDER  = {"distance", "created_at", "title", "status"}
+ALLOWED_DIR    = {"asc", "desc"}
+
+def _encode_cursor(payload: Dict[str, Any]) -> str:
+    return base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode("utf-8")
+
+def _decode_cursor(token: str) -> Dict[str, Any]:
+    return json.loads(base64.urlsafe_b64decode(token.encode("utf-8")).decode("utf-8"))
+
+def _run_query(
+    db: Session,
+    job_id: int,
+    radius_km: float,
+    status: Optional[str],
+    limit: int,
+    order_by: str,
+    order_dir: str,
+    cursor: Optional[str],
+    created_at_from: Optional[str],
+    created_at_to: Optional[str],
+) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+
+    if order_by not in ALLOWED_ORDER:
+        raise HTTPException(status_code=400, detail=f"order_by inválido: {order_by}")
+    if order_dir not in ALLOWED_DIR:
+        raise HTTPException(status_code=400, detail=f"order_dir inválido: {order_dir}")
+    if status is not None and status not in ALLOWED_STATUS:
+        raise HTTPException(status_code=400, detail=f"status inválido: {status}")
+
+    radius_m = float(radius_km) * 1000.0
+    dir_sql  = "ASC" if order_dir == "asc" else "DESC"
+    order_col = {"distance":"distance_km", "created_at":"created_at", "title":"title", "status":"status"}[order_by]
+
+    # Filtros opcionais
+    status_filter = "AND t.status = :status" if status else ""
+    date_from_filter = "AND t.created_at >= :created_from" if created_at_from else ""
+    date_to_filter   = "AND t.created_at <= :created_to"   if created_at_to   else ""
+
+    params: Dict[str, Any] = {
+        "job_id": job_id,
+        "radius_m": radius_m,
+        "limit": min(max(int(limit), 1), 200),
+    }
+    if status:
+        params["status"] = status
+    if created_at_from: params["created_from"] = created_at_from
+    if created_at_to: params["created_to"] = created_at_to
+
+    # Cursor
+    cursor_filter = ""
+    cur_id = None
+    if cursor:
+        tok = _decode_cursor(cursor)
+        if tok.get("ob") != order_by or tok.get("od") != order_dir:
+            raise HTTPException(status_code=400, detail="cursor incompatível com ordenação atual")
+
+        if order_by == "distance":
+            cur_d = float(tok["d"]); cur_id = int(tok["id"])
+            params["cur_d"] = cur_d; params["cur_id"] = cur_id
+            if order_dir == "asc":
+                cursor_filter = "WHERE (distance_km > :cur_d OR (distance_km = :cur_d AND task_id > :cur_id))"
+            else:
+                cursor_filter = "WHERE (distance_km < :cur_d OR (distance_km = :cur_d AND task_id < :cur_id))"
+
+        elif order_by == "created_at":
+            cur_ts = tok["ts"]; cur_id = int(tok["id"])
+            params["cur_ts"] = datetime.fromisoformat(cur_ts) if isinstance(cur_ts, str) else cur_ts; params["cur_id"] = cur_id
+            if order_dir == "asc":
+                cursor_filter = "WHERE (created_at > :cur_ts OR (created_at = :cur_ts AND task_id > :cur_id))"
+            else:
+                cursor_filter = "WHERE (created_at < :cur_ts OR (created_at = :cur_ts AND task_id < :cur_id))"
+
+        else:  # title | status (texto)
+            cur_s = str(tok["s"]); cur_id = int(tok["id"])
+            params["cur_s"] = cur_s; params["cur_id"] = cur_id
+            op = ">" if order_dir == "asc" else "<"
+            cursor_filter = f"WHERE ({order_col} {op} :cur_s OR ({order_col} = :cur_s AND task_id {op} :cur_id))"
+
+    base_sql = f"""
+    WITH j AS (
+      SELECT geom AS g FROM jobs WHERE id = :job_id
+    ),
+    base AS (
+      SELECT
+        t.id AS task_id,
+        t.title,
+        t.status,
+        ROUND((ST_DistanceSphere(t.geom, j.g) / 1000.0)::numeric, 2) AS distance_km,
+        t.created_at
+      FROM tasks t
+      CROSS JOIN j
+      WHERE t.geom IS NOT NULL
+        AND j.g IS NOT NULL
+        AND ST_DWithin(t.geom::geography, j.g::geography, :radius_m)
+        {status_filter}
+        {date_from_filter}
+        {date_to_filter}
+    )
+    SELECT task_id, title, status, distance_km, created_at
+    FROM base
+    {cursor_filter}
+    ORDER BY {order_col} {dir_sql}, task_id {dir_sql}
+    LIMIT :limit
+    """
+
+    rows = db.execute(text(base_sql), params).mappings().all()
+    results = [dict(r) for r in rows]
+
+    # next_cursor
+    next_cur = None
+    if results and len(results) == params["limit"]:
+        last = results[-1]
+        if order_by == "distance":
+            next_cur = _encode_cursor({"ob":"distance","od":order_dir,"d":float(last["distance_km"]),"id":int(last["task_id"])})
+        elif order_by == "created_at":
+            ts = last["created_at"].isoformat() if isinstance(last["created_at"], datetime) else str(last["created_at"])
+            next_cur = _encode_cursor({"ob":"created_at","od":order_dir,"ts": ts,"id":int(last["task_id"])})
+        else:  # title/status
+            next_cur = _encode_cursor({"ob":order_by,"od":order_dir,"s": str(last[order_by]),"id":int(last["task_id"])})
+    return results, next_cur
+
+@router.get("/{job_id}/tasks_nearby")
+def tasks_nearby(
+    job_id: int,
+    radius_km: float = Query(30.0, ge=0.0),
+    status: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    order_by: str = Query("distance"),
+    order_dir: str = Query("asc"),
+    cursor: Optional[str] = Query(None),
+    created_at_from: Optional[str] = Query(None, description="ISO: 2025-10-23T00:00:00"),
+    created_at_to: Optional[str] = Query(None, description="ISO: 2025-10-23T23:59:59"),
+    db: Session = Depends(get_db)
+):
+    try:
+        rows, nxt = _run_query(db, job_id, radius_km, status, limit, order_by, order_dir, cursor, created_at_from, created_at_to)
+        return {
+            "job_id": job_id,
+            "radius_km": radius_km,
+            "order_by": order_by,
+            "order_dir": order_dir,
+            "filters": {"status": status, "limit": limit, "cursor": cursor, "created_at_from": created_at_from, "created_at_to": created_at_to},
+            "count": len(rows),
+            "next_cursor": nxt,
+            "results": rows
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"{e._class.name_}: {e}")
+
+def _telegram_send_document(filename: str, data_bytes: bytes, caption: str) -> Dict[str, Any]:
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        return {"sent": False, "reason": "vars ausentes (TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID)"}
+    try:
+        import requests  # tipo: ignore
+    except Exception:
+        return {"sent": False, "reason": "requests não instalado no container"}
+    url = f"https://api.telegram.org/bot{token}/sendDocument"
+    files = {"document": (filename, data_bytes, "text/csv")}
+    data = {"chat_id": chat_id, "caption": caption}
+    try:
+        r = requests.post(url, data=data, files=files, timeout=20)
+        ok = False
+        try:
+            j = r.json()
+            ok = bool(j.get("ok"))
+        except Exception:
+            j = {"raw": r.text}
+        return {"sent": ok, "status_code": r.status_code, "resp": j}
+    except Exception as e:
+        return {"sent": False, "error": str(e)}
+
+@router.get("/{job_id}/tasks_nearby/export")
+def tasks_nearby_export(
+    job_id: int,
+    radius_km: float = Query(30.0, ge=0.0),
+    status: Optional[str] = Query(None),
+    limit: int = Query(1000, ge=1, le=5000),
+    order_by: str = Query("distance"),
+    order_dir: str = Query("asc"),
+    cursor: Optional[str] = Query(None),
+    created_at_from: Optional[str] = Query(None),
+    created_at_to: Optional[str] = Query(None),
+    notify: bool = Query(False, description="Se true, tenta enviar CSV via Telegram"),
+    db: Session = Depends(get_db)
+):
+    rows, _ = _run_query(db, job_id, radius_km, status, limit, order_by, order_dir, cursor, created_at_from, created_at_to)
+    # CSV
+    import io, csv
+    sio = io.StringIO()
+    w = csv.writer(sio)
+    w.writerow(["task_id","title","status","distance_km","created_at"])
+    for r in rows:
+        w.writerow([r["task_id"], r["title"], r["status"], r["distance_km"], r["created_at"]])
+    csv_text = sio.getvalue()
+    csv_bytes = csv_text.encode("utf-8")
+    filename = f"tasks_nearby_job_{job_id}.csv"
+
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    if notify:
+        info = _telegram_send_document(filename, csv_bytes, f"GeoObra · tasks_nearby job={job_id} (radius={radius_km}km)")
+        # Sinaliza no header o resultado do notify (não quebra o download)
+        headers["X-Telegram-Notify"] = json.dumps(info, ensure_ascii=False)
+
+    return Response(content=csv_text, media_type="text/csv", headers=headers)
+

@@ -1,0 +1,297 @@
+from typing import Optional, Dict, Any, Generator, List
+from datetime import datetime
+from base64 import b64encode, b64decode
+import json
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import text, bindparam
+import sqlalchemy.types as satypes
+
+# --- get_db compat ---
+try:
+    from ..db.session import get_db  # se existir no projeto
+except Exception:
+    from ..db.session import SessionLocal
+    def get_db() -> Generator[Session, None, None]:
+        db = SessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+router = APIRouter(prefix="", tags=["tasks_nearby"])
+
+# --------------------------
+# Helpers de cursor (compat)
+# --------------------------
+def _encode_cursor(payload: Dict[str, Any]) -> str:
+    raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    return b64encode(raw).decode("ascii")
+
+def _decode_cursor(s: str) -> Dict[str, Any]:
+    try:
+        raw = b64decode(s.encode("ascii"))
+        return json.loads(raw.decode("utf-8"))
+    except Exception:
+        return {}
+
+# --------------------------
+# Rota principal
+# --------------------------
+@router.get("/jobs/{job_id}/tasks_nearby")
+def tasks_nearby(
+    job_id: int,
+    radius_km: float = Query(30.0, ge=0.0),
+    status: Optional[str] = Query(None, pattern="^(pending|in_progress|done|blocked)$"),
+    limit: int = Query(50, ge=1, le=1000),
+    cursor: Optional[str] = Query(None),
+    order_by: str = Query("distance", pattern="^(distance|created_at|title|status)$"),
+    order_dir: str = Query("asc", pattern="^(asc|desc)$"),
+    created_at_from: Optional[datetime] = Query(None, alias="created_at_from"),
+    created_at_to: Optional[datetime] = Query(None, alias="created_at_to"),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista tasks próximas de um job.
+    - Quando order_by=distance&order_dir=asc:
+        * sem cursor -> usa fn_job_nearby_tasks_v3 (rápida e estável)
+        * com cursor  -> usa SQL inline com KNN + keyset (paginada)
+    - Para outras ordenações, mantém a implementação por SQL padrão (DISTANCE não se aplica).
+    """
+    try:
+        # Normaliza direção
+        dir_sql = "ASC" if order_dir.lower() == "asc" else "DESC"
+
+        # -------------------------------------------
+        # (A) Ordenação por distância ascendente
+        # -------------------------------------------
+        if order_by == "distance" and dir_sql == "ASC":
+            # Sem cursor: usa a função v3
+            if not cursor:
+                sql = text("""
+    SELECT task_id, title, status, distance_km, created_at
+    FROM public.fn_job_nearby_tasks_v3(:job_id, CAST(:radius_km AS NUMERIC), :limit, :status, :created_from, :created_to);
+""").bindparams(
+    bindparam("job_id", type_=satypes.Integer()),
+    bindparam("radius_km", type_=satypes.Numeric()),
+    bindparam("limit", type_=satypes.Integer()),
+    bindparam("status", type_=satypes.String()),
+    bindparam("created_from", type_=satypes.DateTime()),
+    bindparam("created_to", type_=satypes.DateTime())
+)
+                rows = db.execute(sql, {
+                    "job_id": job_id,
+                    "radius_km": radius_km,
+                    "limit": limit,
+                    "status": status,
+                    "created_from": created_at_from,
+                    "created_to": created_at_to,
+                }).mappings().all()
+
+                # next_cursor baseado no último item
+                next_cur = None
+                if rows:
+                    last = rows[-1]
+                    next_cur = _encode_cursor({
+                        "ob": "distance", "od": "asc",
+                        "d": float(last["distance_km"]),
+                        "id": int(last["task_id"])
+                    })
+
+                return {
+                    "job_id": job_id,
+                    "radius_km": float(radius_km),
+                    "order_by": "distance",
+                    "order_dir": "asc",
+                    "filters": {
+                        "status": status,
+                        "limit": limit,
+                        "cursor": None,
+                        "created_at_from": created_at_from.isoformat() if created_at_from else None,
+                        "created_at_to": created_at_to.isoformat() if created_at_to else None
+                    },
+                    "count": len(rows),
+                    "next_cursor": next_cur,
+                    "results": [
+                        {
+                            "task_id": int(r["task_id"]),
+                            "title": r["title"],
+                            "status": r["status"],
+                            "distance_km": float(r["distance_km"]),
+                            "created_at": (r["created_at"].isoformat() if isinstance(r["created_at"], datetime) else str(r["created_at"]))
+                        }
+                        for r in rows
+                    ]
+                }
+
+            # Com cursor: SQL inline com KNN + keyset (estável por distance_km, task_id)
+            cur = _decode_cursor(cursor) if cursor else {}
+            cur_d = float(cur.get("d")) if "d" in cur else None
+            cur_id = int(cur.get("id")) if "id" in cur else None
+
+            # query: bbox (idx geometry) + dwithin (geography) + filtros + keyset e ORDER BY KNN
+            sql_cursor = text("""
+                WITH j AS (
+                    SELECT
+                        jobs.geom,
+                        ( CAST(:radius_km AS double precision) / (111.32 * GREATEST(COS(RADIANS(ST_Y(jobs.geom))), 0.01)) )::double precision AS deg
+                    FROM public.jobs
+                    WHERE jobs.id = :job_id AND jobs.geom IS NOT NULL
+                )
+                SELECT
+                    t.id AS task_id,
+                    t.title::varchar AS title,
+                    t.status::varchar AS status,
+                    ROUND( (ST_Distance(geography(t.geom), geography(j.geom), true) / 1000.0)::numeric, 2 ) AS distance_km,
+                    t.created_at
+                FROM public.tasks t
+                JOIN j ON TRUE
+                WHERE
+                    t.geom IS NOT NULL
+                    AND t.geom && ST_Expand(j.geom, j.deg)
+                    AND ST_DWithin(t.geom::geography, j.geom::geography, (:radius_km * 1000.0)::double precision, true)
+                    AND (CAST(:status AS varchar) IS NULL OR t.status = CAST(:status AS varchar))
+                    AND (:created_from IS NULL OR t.created_at >= :created_from)
+                    AND (:created_to   IS NULL OR t.created_at <= :created_to)
+                    -- keyset pela "visão" externa: distance_km (2 casas) + id
+                    AND (
+                        %(cur_d)s IS NULL OR %(cur_id)s IS NULL OR
+                        ( ROUND( (ST_Distance(geography(t.geom), geography(j.geom), true) / 1000.0)::numeric, 2 ), t.id ) >
+                        ( CAST(%(cur_d)s AS numeric), CAST(%(cur_id)s AS int) )
+                    )
+                ORDER BY
+                    t.geom <-> j.geom
+                LIMIT :limit;
+            """)
+            rows = db.execute(sql_cursor, {
+                "job_id": job_id,
+                "radius_km": radius_km,
+                "status": status,
+                "created_from": created_at_from,
+                "created_to": created_at_to,
+                "cur_d": cur_d,
+                "cur_id": cur_id,
+                "limit": limit
+            }).mappings().all()
+
+            next_cur = None
+            if rows:
+                last = rows[-1]
+                next_cur = _encode_cursor({
+                    "ob": "distance", "od": "asc",
+                    "d": float(last["distance_km"]),
+                    "id": int(last["task_id"])
+                })
+
+            return {
+                "job_id": job_id,
+                "radius_km": float(radius_km),
+                "order_by": "distance",
+                "order_dir": "asc",
+                "filters": {
+                    "status": status,
+                    "limit": limit,
+                    "cursor": cursor,
+                    "created_at_from": created_at_from.isoformat() if created_at_from else None,
+                    "created_at_to": created_at_to.isoformat() if created_at_to else None
+                },
+                "count": len(rows),
+                "next_cursor": next_cur,
+                "results": [
+                    {
+                        "task_id": int(r["task_id"]),
+                        "title": r["title"],
+                        "status": r["status"],
+                        "distance_km": float(r["distance_km"]),
+                        "created_at": (r["created_at"].isoformat() if isinstance(r["created_at"], datetime) else str(r["created_at"]))
+                    }
+                    for r in rows
+                ]
+            }
+
+        # -------------------------------------------
+        # (B) Outras ordenações: caminho já existente
+        # -------------------------------------------
+        # title / status / created_at — preserva a consulta anterior baseada em views / CTEs
+        # OBS: ordenação por 'distance' DESC não é suportada por KNN, então mantemos o caminho antigo também.
+        valid_columns = {"created_at": "created_at", "title": "title", "status": "status"}
+        if order_by not in valid_columns:
+            raise HTTPException(status_code=400, detail="Unsupported order_by for this endpoint")
+
+        col = valid_columns[order_by]
+        sql_other = text(f"""
+            WITH j AS (
+                SELECT geom FROM public.jobs WHERE id = :job_id AND geom IS NOT NULL
+            )
+            SELECT
+                t.id AS task_id,
+                t.title::varchar AS title,
+                t.status::varchar AS status,
+                ROUND( (ST_Distance(geography(t.geom), geography(j.geom), true) / 1000.0)::numeric, 2 ) AS distance_km,
+                t.created_at
+            FROM public.tasks t
+            JOIN j ON TRUE
+            WHERE
+                t.geom IS NOT NULL
+                AND ST_DWithin(t.geom::geography, j.geom::geography, (:radius_km * 1000.0)::double precision, true)
+                AND (CAST(:status AS varchar) IS NULL OR t.status = CAST(:status AS varchar))
+                AND (:created_from IS NULL OR t.created_at >= :created_from)
+                AND (:created_to   IS NULL OR t.created_at <= :created_to)
+            ORDER BY {col} {dir_sql}, t.id ASC
+            LIMIT :limit;
+        """)
+        rows = db.execute(sql_other, {
+            "job_id": job_id,
+            "radius_km": radius_km,
+            "status": status,
+            "created_from": created_at_from,
+            "created_to": created_at_to,
+            "limit": limit
+        }).mappings().all()
+
+        next_cur = None
+        if rows:
+            # usa col dinamicamente para o cursor de outras ordenações (se quiser evoluir depois)
+            last = rows[-1]
+            next_cur = _encode_cursor({
+                "ob": order_by, "od": order_dir,
+                "k": (last[col] if col != "created_at" else (last["created_at"].isoformat() if isinstance(last["created_at"], datetime) else str(last["created_at"]))),
+                "id": int(last["task_id"])
+            })
+
+        return {
+            "job_id": job_id,
+            "radius_km": float(radius_km),
+            "order_by": order_by,
+            "order_dir": order_dir,
+            "filters": {
+                "status": status,
+                "limit": limit,
+                "cursor": cursor,
+                "created_at_from": created_at_from.isoformat() if created_at_from else None,
+                "created_at_to": created_at_to.isoformat() if created_at_to else None
+            },
+            "count": len(rows),
+            "next_cursor": next_cur,
+            "results": [
+                {
+                    "task_id": int(r["task_id"]),
+                    "title": r["title"],
+                    "status": r["status"],
+                    "distance_km": float(r["distance_km"]),
+                    "created_at": (r["created_at"].isoformat() if isinstance(r["created_at"], datetime) else str(r["created_at"]))
+                }
+                for r in rows
+            ]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"{type(e).___name_______}: {e}")
+
+
+
+
+

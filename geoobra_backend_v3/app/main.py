@@ -1,3 +1,4 @@
+from starlette.middleware.gzip import GZipMiddleware
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -40,3 +41,12 @@ def create_app() -> FastAPI:
     return app
 
 app = create_app()
+
+# --- auto-registered by setup script ---
+from .api.routes_tasks_nearby import router as tasks_nearby_router
+from .api.routes_tasks_crud import router as tasks_crud_router
+app.include_router(tasks_nearby_router)
+app.include_router(tasks_crud_router)
+# --- end auto-registered ---
+
+

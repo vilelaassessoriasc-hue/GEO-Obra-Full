@@ -1,0 +1,72 @@
+from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from decimal import Decimal
+from typing import Generator, Optional
+import logging, traceback
+
+# Tenta importar get_db "oficial"; senão usa SessionLocal
+try:
+    from app.db.session import get_db  # se existir no seu projeto
+except Exception:
+    from ..db.session import SessionLocal
+    def get_db() -> Generator[Session, None, None]:
+        db = SessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+router = APIRouter(prefix="/jobs", tags=["jobs"])
+ALLOWED_STATUS = {"pending", "in_progress", "done"}
+log = logging.getLogger("uvicorn.error")
+
+@router.get("/{job_id}/tasks_nearby")
+def tasks_nearby(
+    job_id: int,
+    radius_km: int = Query(30, ge=0),
+    status: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    try:
+        # sane inputs
+        radius_km = int(radius_km)
+        limit     = int(limit)
+        if status not in ALLOWED_STATUS:
+            status = None
+
+        sql = text("""
+            SELECT task_id, title, status, distance_km
+            FROM fn_job_nearby_tasks(:job_id, :radius_km)
+            WHERE (:status IS NULL OR status = :status)
+            ORDER BY distance_km ASC
+            LIMIT :limit
+        """)
+
+        rows = db.execute(sql, {
+            "job_id": job_id,
+            "radius_km": radius_km,
+            "status": status,
+            "limit": limit,
+        }).mappings().all()
+
+        def to_jsonable(d):
+            d = dict(d)
+            for k, v in d.items():
+                if isinstance(v, Decimal):
+                    d[k] = float(v)
+            return d
+
+        data = [to_jsonable(r) for r in rows]
+        return {
+            "job_id": job_id,
+            "radius_km": radius_km,
+            "filters": {"status": status, "limit": limit},
+            "count": len(data),
+            "results": data,
+        }
+    except Exception as e:
+        log.exception("tasks_nearby failed")
+        # devolve motivo no corpo pra facilitar diagnóstico
+        raise HTTPException(status_code=500, detail=f"{type(e)._name_}: {e}")

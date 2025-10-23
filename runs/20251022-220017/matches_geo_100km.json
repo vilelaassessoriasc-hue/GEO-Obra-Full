@@ -1,0 +1,37 @@
+{
+  "job_id": 3,
+  "radius_km": 100.0,
+  "count": 3,
+  "total_count": 3,
+  "page": null,
+  "page_size": null,
+  "results": [
+    {
+      "id": 2,
+      "email": "test@example.com",
+      "lat": -23.55052,
+      "lng": -46.63331,
+      "role": "worker",
+      "distance_km": 0.0,
+      "score": 1.0
+    },
+    {
+      "id": 3,
+      "email": "worker2@example.com",
+      "lat": -23.46,
+      "lng": -46.53,
+      "role": "worker",
+      "distance_km": 14.56999179832,
+      "score": 0.8543000820168
+    },
+    {
+      "id": 4,
+      "email": "worker3@example.com",
+      "lat": -22.91,
+      "lng": -47.06,
+      "role": "worker",
+      "distance_km": 83.50767909547,
+      "score": 0.1649232090453
+    }
+  ]
+}

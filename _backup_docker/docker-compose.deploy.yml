@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: geoobra_db
+    environment:
+      POSTGRES_USER: geoobra
+      POSTGRES_PASSWORD: geoobra
+      POSTGRES_DB: geoobra_db
+    ports: ["5432:5432"]
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+
+  api:
+    # permite sobrepor com: IMAGE=ghcr.io/<owner>/geo-obra-full-api:<tag> docker compose -f docker-compose.deploy.yml up -d
+    image: ${IMAGE:-geoobra-api-local:latest}
+    container_name: geoobra_api
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql+psycopg2://geoobra:geoobra@db:5432/geoobra_db
+    ports: ["8000:8000"]
+    command: >
+      sh -c "uvicorn geoobra_backend_v3.app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"
+
+volumes:
+  dbdata:
+

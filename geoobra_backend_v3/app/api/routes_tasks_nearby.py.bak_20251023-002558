@@ -1,0 +1,47 @@
+from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from decimal import Decimal
+from typing import Generator
+
+# Tenta usar get_db "oficial"; se não existir, monta via SessionLocal
+try:
+    from app.db.session import get_db
+except Exception:
+    from ..db.session import SessionLocal
+    def get_db() -> Generator[Session, None, None]:
+        db = SessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+router = APIRouter(prefix="/jobs", tags=["jobs"])
+
+@router.get("/{job_id}/tasks_nearby")
+def tasks_nearby(job_id: int, radius_km: int = Query(30, ge=0), db: Session = Depends(get_db)):
+    """
+    Retorna tarefas próximas da vaga informada (usa fn_job_nearby_tasks).
+    Observação: radius_km é inteiro para casar com a assinatura da função SQL.
+    """
+    try:
+        sql = text("""
+            SELECT task_id, title, status, distance_km
+            FROM fn_job_nearby_tasks(:job_id, :radius_km)
+            ORDER BY distance_km ASC;
+        """)
+        rows = db.execute(sql, {"job_id": job_id, "radius_km": radius_km}).mappings().all()
+
+        def _jsonable(d):
+            d = dict(d)
+            for k, v in d.items():
+                if isinstance(v, Decimal):
+                    d[k] = float(v)
+            return d
+
+        data = [_jsonable(r) for r in rows]
+        return {"job_id": job_id, "radius_km": radius_km, "count": len(data), "results": data}
+    except Exception as e:
+        msg = f"tasks_nearby failed: {type(e)._name_}: {e}"
+        print(msg)
+        raise HTTPException(status_code=500, detail=msg)
